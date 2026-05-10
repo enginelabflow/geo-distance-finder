@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geo Distance Finder</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8f7;
+      --panel: #ffffff;
+      --text: #1d2522;
+      --muted: #66736d;
+      --border: #d9e1dd;
+      --primary: #176b5b;
+      --primary-dark: #0f5145;
+      --accent: #e7f4ef;
+      --error: #b42318;
+      --error-bg: #fff0ed;
+      --shadow: 0 18px 45px rgba(22, 42, 35, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(135deg, rgba(23, 107, 91, 0.12), transparent 34%),
+        linear-gradient(315deg, rgba(216, 137, 49, 0.11), transparent 36%),
+        var(--bg);
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(980px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 42px 0;
+    }
+
+    .app-header {
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      line-height: 1.05;
+    }
+
+    .subtitle {
+      max-width: 680px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .search-panel,
+    .result-card,
+    .raw-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .search-panel {
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+      min-height: 46px;
+      padding: 11px 13px;
+      border: 1px solid #bfcac5;
+      border-radius: 6px;
+      color: var(--text);
+      font: inherit;
+      background: #fff;
+    }
+
+    input:focus {
+      outline: 3px solid rgba(23, 107, 91, 0.22);
+      border-color: var(--primary);
+    }
+
+    button {
+      min-height: 46px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 6px;
+      color: #fff;
+      background: var(--primary);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: var(--primary-dark);
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.75;
+    }
+
+    .message {
+      display: none;
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 6px;
+      font-weight: 700;
+    }
+
+    .message.is-error {
+      display: block;
+      color: var(--error);
+      background: var(--error-bg);
+      border: 1px solid #ffd2ca;
+    }
+
+    .message.is-info {
+      display: block;
+      color: var(--primary-dark);
+      background: var(--accent);
+      border: 1px solid #cce8dd;
+    }
+
+    .result-card {
+      display: none;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .result-card.is-visible {
+      display: block;
+    }
+
+    .distance {
+      padding: 18px;
+      margin-bottom: 18px;
+      border-radius: 8px;
+      background: var(--accent);
+    }
+
+    .distance span {
+      display: block;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .distance strong {
+      display: block;
+      margin-top: 4px;
+      font-size: clamp(2rem, 6vw, 3rem);
+      line-height: 1;
+    }
+
+    .place-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .place {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .place h2 {
+      margin: 0 0 10px;
+      font-size: 1.15rem;
+    }
+
+    .place p {
+      margin: 7px 0;
+      overflow-wrap: anywhere;
+    }
+
+    .place a {
+      color: var(--primary-dark);
+      font-weight: 700;
+    }
+
+    .raw-panel {
+      display: none;
+      overflow: hidden;
+    }
+
+    .raw-panel.is-visible {
+      display: block;
+    }
+
+    details {
+      padding: 0;
+    }
+
+    summary {
+      padding: 16px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #fbfcfb;
+      border-bottom: 1px solid var(--border);
+    }
+
+    pre {
+      max-height: 420px;
+      margin: 0;
+      padding: 18px;
+      overflow: auto;
+      color: #26312d;
+      background: #f9fbfa;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    @media (max-width: 720px) {
+      main {
+        width: min(100% - 24px, 980px);
+        padding: 28px 0;
+      }
+
+      .form-grid,
+      .place-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .search-panel,
+      .result-card {
+        padding: 18px;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="app-header">
+      <h1>Geo Distance Finder</h1>
+      <p class="subtitle">Enter two places, look them up with OpenStreetMap Nominatim, and see the straight-line distance between them.</p>
+    </header>
+
+    <section class="search-panel" aria-labelledby="search-title">
+      <h2 id="search-title">Find Distance</h2>
+      <form id="distanceForm">
+        <div class="form-grid">
+          <div>
+            <label for="fromLocation">From location</label>
+            <input id="fromLocation" name="fromLocation" type="text" placeholder="Adelaide, Australia" autocomplete="off">
+          </div>
+          <div>
+            <label for="toLocation">To location</label>
+            <input id="toLocation" name="toLocation" type="text" placeholder="Tokyo, Japan" autocomplete="off">
+          </div>
+        </div>
+        <button id="findButton" type="submit">Calculate distance</button>
+      </form>
+      <div id="message" class="message" role="status" aria-live="polite"></div>
+    </section>
+
+    <section id="resultCard" class="result-card" aria-live="polite"></section>
+
+    <section id="rawPanel" class="raw-panel">
+      <details>
+        <summary>Raw JSON responses</summary>
+        <pre id="rawJson"></pre>
+      </details>
+    </section>
+  </main>
+
+  <script>
+    const form = document.querySelector("#distanceForm");
+    const fromInput = document.querySelector("#fromLocation");
+    const toInput = document.querySelector("#toLocation");
+    const findButton = document.querySelector("#findButton");
+    const message = document.querySelector("#message");
+    const resultCard = document.querySelector("#resultCard");
+    const rawPanel = document.querySelector("#rawPanel");
+    const rawJson = document.querySelector("#rawJson");
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      const fromPlace = fromInput.value.trim();
+      const toPlace = toInput.value.trim();
+
+      clearResults();
+
+      if (!fromPlace || !toPlace) {
+        showMessage("Please enter both a from location and a to location.", "error");
+        return;
+      }
+
+      setLoading(true);
+      showMessage("Looking up both places...", "info");
+
+      try {
+        const fromResponse = await searchPlace(fromPlace);
+        const toResponse = await searchPlace(toPlace);
+
+        if (fromResponse.length === 0) {
+          showMessage("Sorry, the from location was not found. Try adding a country or region.", "error");
+          return;
+        }
+
+        if (toResponse.length === 0) {
+          showMessage("Sorry, the to location was not found. Try adding a country or region.", "error");
+          return;
+        }
+
+        // The API returns an array of matching places. Because the URL uses limit=1,
+        // the first item is the best single result that Nominatim found.
+        const fromResult = fromResponse[0];
+        const toResult = toResponse[0];
+
+        const distance = calculateDistanceInKilometres(
+          Number(fromResult.lat),
+          Number(fromResult.lon),
+          Number(toResult.lat),
+          Number(toResult.lon)
+        );
+
+        displayResult(fromResult, toResult, distance);
+        displayRawJson(fromResponse, toResponse);
+        hideMessage();
+      } catch (error) {
+        showMessage("The location lookup failed. Please check your connection and try again.", "error");
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    async function searchPlace(place) {
+      // 1. Build the API URL by placing the user's text into the q= part.
+      // encodeURIComponent safely changes spaces and special characters into
+      // URL-friendly text, such as "New York" becoming "New%20York".
+      const apiUrl = "https://nominatim.openstreetmap.org/search?q="
+        + encodeURIComponent(place)
+        + "&format=jsonv2&limit=1";
+
+      // 2. fetch asks the browser to make an HTTP request to the API URL.
+      // await pauses this function until the network request has finished.
+      const response = await fetch(apiUrl);
+
+      if (!response.ok) {
+        throw new Error("Nominatim request failed");
+      }
+
+      // 3. response.json() reads the response body and converts the JSON text
+      // into normal JavaScript data. For this endpoint, that data is an array.
+      const data = await response.json();
+      return data;
+    }
+
+    function calculateDistanceInKilometres(fromLat, fromLon, toLat, toLon) {
+      // 4. The Haversine formula estimates the straight-line distance between
+      // two points on Earth using their latitude and longitude.
+      const earthRadiusKm = 6371;
+      const fromLatRad = degreesToRadians(fromLat);
+      const toLatRad = degreesToRadians(toLat);
+      const latDifference = degreesToRadians(toLat - fromLat);
+      const lonDifference = degreesToRadians(toLon - fromLon);
+
+      const a =
+        Math.sin(latDifference / 2) * Math.sin(latDifference / 2) +
+        Math.cos(fromLatRad) * Math.cos(toLatRad) *
+        Math.sin(lonDifference / 2) * Math.sin(lonDifference / 2);
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return earthRadiusKm * c;
+    }
+
+    function degreesToRadians(degrees) {
+      return degrees * (Math.PI / 180);
+    }
+
+    function displayResult(fromResult, toResult, distance) {
+      const fromLat = Number(fromResult.lat);
+      const fromLon = Number(fromResult.lon);
+      const toLat = Number(toResult.lat);
+      const toLon = Number(toResult.lon);
+
+      const fromMapLink = createOpenStreetMapLink(fromLat, fromLon);
+      const toMapLink = createOpenStreetMapLink(toLat, toLon);
+
+      // 5. The result is displayed by creating one HTML string with the values
+      // from the API and then placing that HTML inside the result card.
+      resultCard.innerHTML = `
+        <div class="distance">
+          <span>Straight-line distance</span>
+          <strong>${distance.toLocaleString(undefined, { maximumFractionDigits: 2 })} km</strong>
+        </div>
+        <div class="place-grid">
+          <article class="place">
+            <h2>From</h2>
+            <p><strong>Place:</strong> ${escapeHtml(fromResult.display_name)}</p>
+            <p><strong>Latitude:</strong> ${fromLat.toFixed(6)}</p>
+            <p><strong>Longitude:</strong> ${fromLon.toFixed(6)}</p>
+            <p><a href="${fromMapLink}" target="_blank" rel="noopener">Open in OpenStreetMap</a></p>
+          </article>
+          <article class="place">
+            <h2>To</h2>
+            <p><strong>Place:</strong> ${escapeHtml(toResult.display_name)}</p>
+            <p><strong>Latitude:</strong> ${toLat.toFixed(6)}</p>
+            <p><strong>Longitude:</strong> ${toLon.toFixed(6)}</p>
+            <p><a href="${toMapLink}" target="_blank" rel="noopener">Open in OpenStreetMap</a></p>
+          </article>
+        </div>
+      `;
+
+      resultCard.classList.add("is-visible");
+    }
+
+    function displayRawJson(fromResponse, toResponse) {
+      rawJson.textContent = JSON.stringify({
+        from: fromResponse,
+        to: toResponse
+      }, null, 2);
+      rawPanel.classList.add("is-visible");
+    }
+
+    function createOpenStreetMapLink(lat, lon) {
+      return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=12/${lat}/${lon}`;
+    }
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = `message is-${type}`;
+    }
+
+    function hideMessage() {
+      message.textContent = "";
+      message.className = "message";
+    }
+
+    function clearResults() {
+      hideMessage();
+      resultCard.innerHTML = "";
+      resultCard.classList.remove("is-visible");
+      rawJson.textContent = "";
+      rawPanel.classList.remove("is-visible");
+    }
+
+    function setLoading(isLoading) {
+      findButton.disabled = isLoading;
+      findButton.textContent = isLoading ? "Calculating..." : "Calculate distance";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+  </script>
+</body>
+</html>
